@@ -174,18 +174,21 @@ export function QuestionEditor({
             </label>
 
             {question.type === 'true_false' ? (
-              <div className="grid grid-cols-2 gap-3">
-                {question.options
-                  .filter((o) => o.option_text === 'True' || o.option_text === 'False')
-                  .sort((a) => (a.option_text === 'True' ? -1 : 1))
-                  .map((option, index) => (
-                    <OptionButton
-                      key={option.id}
-                      option={option}
-                      color={index === 0 ? 'green' : 'red'}
-                      onClick={() => onSetCorrectOption(option.id)}
-                    />
-                  ))}
+              <div className="space-y-2">
+                <p className="text-white/50 text-xs">Tap to mark the correct answer</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {question.options
+                    .filter((o) => o.option_text === 'True' || o.option_text === 'False')
+                    .sort((a) => (a.option_text === 'True' ? -1 : 1))
+                    .map((option, index) => (
+                      <OptionButton
+                        key={option.id}
+                        option={option}
+                        color={index === 0 ? 'green' : 'red'}
+                        onClick={() => onSetCorrectOption(option.id)}
+                      />
+                    ))}
+                </div>
               </div>
             ) : (
               <>

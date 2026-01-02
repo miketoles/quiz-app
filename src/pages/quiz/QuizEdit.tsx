@@ -195,7 +195,7 @@ export function QuizEdit() {
     setUnsavedQuestions((prev) => new Set(prev).add(questionId))
   }
 
-  const handleUpdateQuestion = (
+  const handleUpdateQuestion = async (
     questionId: string,
     updates: Partial<Question>
   ) => {
@@ -206,6 +206,55 @@ export function QuizEdit() {
 
     // Mark as unsaved
     setUnsavedQuestions((prev) => new Set(prev).add(questionId))
+
+    // If switching to true/false, ensure options exist
+    if (updates.type === 'true_false') {
+      await ensureTrueFalseOptions(questionId)
+    }
+  }
+
+  const ensureTrueFalseOptions = async (questionId: string) => {
+    const question = questions.find((q) => q.id === questionId)
+    if (!question) return
+
+    const hasTrue = question.options.some((o) => o.option_text === 'True')
+    const hasFalse = question.options.some((o) => o.option_text === 'False')
+
+    if (hasTrue && hasFalse) return
+
+    const newOptions = []
+    if (!hasTrue) {
+      newOptions.push({
+        question_id: questionId,
+        option_text: 'True',
+        is_correct: !question.options.some((o) => o.is_correct), // default correct if none exists
+        order_index: 0,
+      })
+    }
+    if (!hasFalse) {
+      newOptions.push({
+        question_id: questionId,
+        option_text: 'False',
+        is_correct: false,
+        order_index: 1,
+      })
+    }
+
+    const { data, error } = await supabase
+      .from('question_options')
+      .insert(newOptions)
+      .select()
+
+    if (error) {
+      setError(error.message)
+      return
+    }
+
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.id === questionId ? { ...q, options: [...q.options, ...(data || [])] } : q
+      )
+    )
   }
 
   const handleSaveQuestion = async (questionId: string) => {
