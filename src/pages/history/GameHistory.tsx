@@ -68,9 +68,8 @@ export function GameHistory() {
 
   const filteredSessions = sessions.filter((session) => {
     const quizTitle = session.quiz?.title?.toLowerCase() || ''
-    const patientCode = session.quiz?.patient_code?.toLowerCase() || ''
     const search = searchTerm.toLowerCase()
-    return quizTitle.includes(search) || patientCode.includes(search)
+    return quizTitle.includes(search)
   })
 
   const formatDate = (dateString: string) => {
@@ -107,7 +106,7 @@ export function GameHistory() {
         <div className="max-w-md">
           <Input
             type="search"
-            placeholder="Search by quiz title or patient code..."
+            placeholder="Search by quiz title..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -152,11 +151,6 @@ export function GameHistory() {
                         <h3 className="text-lg font-bold text-white truncate">
                           {session.quiz?.title || 'Unknown Quiz'}
                         </h3>
-                        {session.quiz?.patient_code && (
-                          <span className="shrink-0 px-2 py-0.5 bg-primary/30 rounded text-xs text-white/80">
-                            {session.quiz.patient_code}
-                          </span>
-                        )}
                       </div>
                       <p className="text-white/60 text-sm mt-1">
                         {formatDate(session.ended_at || session.created_at)}

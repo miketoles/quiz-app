@@ -18,7 +18,6 @@ export function exportGameToCSV(data: ExportData): void {
   // Create CSV header
   const headers = [
     'Quiz Title',
-    'Patient Code',
     'Date',
     'Player',
     'Final Score',
@@ -58,7 +57,6 @@ export function exportGameToCSV(data: ExportData): void {
 
       const row = [
         quiz.title,
-        quiz.patient_code || '',
         formatDateForCSV(session.ended_at || session.created_at),
         participant.nickname,
         participant.total_score.toString(),

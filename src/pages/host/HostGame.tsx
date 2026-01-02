@@ -6,6 +6,7 @@ import { Timer } from '../../components/game/Timer'
 import { AnswerButton } from '../../components/game/AnswerButton'
 import { Avatar } from '../../components/game/Avatar'
 import { Button } from '../../components/ui/Button'
+import { calculateScore } from '../../utils/scoring'
 import type { GameSession, Question, QuestionOption, GameParticipant, QuestionResponse } from '../../lib/database.types'
 
 type GamePhase = 'question' | 'results'
@@ -28,6 +29,7 @@ export function HostGame() {
   const [phase, setPhase] = useState<GamePhase>('question')
   const [loading, setLoading] = useState(true)
   const [timerComplete, setTimerComplete] = useState(false)
+  const [scoredQuestionIds, setScoredQuestionIds] = useState<Set<string>>(new Set())
 
   const currentQuestion = questions[session?.current_question_index ?? 0]
   const totalQuestions = questions.length
@@ -135,6 +137,7 @@ export function HostGame() {
       .eq('question_id', questionId)
 
     setResponses(data || [])
+    return data || []
   }
 
   const handleTimerComplete = useCallback(async () => {
@@ -143,12 +146,73 @@ export function HostGame() {
     await handleShowResults()
   }, [session, currentQuestion])
 
+  const applyScores = async (question: QuestionWithOptions, questionResponses: QuestionResponse[]) => {
+    if (!session) return
+
+    // Prevent double-scoring while this host view is active
+    if (scoredQuestionIds.has(question.id)) return
+
+    const timeLimitMs = (question.time_limit_override ?? session.time_limit) * 1000
+
+    const participantUpdates = participants.map((participant) => {
+      const response = questionResponses.find(
+        (r) => r.participant_id === participant.id && r.question_id === question.id
+      )
+
+      const result = calculateScore({
+        basePoints: session.points_per_question,
+        timeLimitMs,
+        responseTimeMs: response?.response_time_ms ?? timeLimitMs,
+        speedScoring: session.speed_scoring,
+        currentStreak: participant.current_streak,
+        isCorrect: response?.is_correct ?? false,
+        isWarmup: question.is_warmup,
+      })
+
+      return {
+        participantId: participant.id,
+        totalScore: participant.total_score + result.points,
+        newStreak: result.newStreak,
+        pointsAwarded: result.points,
+        responseId: response?.id,
+      }
+    })
+
+    // Update question_responses with awarded points (skip if no response)
+    const responseUpdates = participantUpdates
+      .filter((p) => p.responseId)
+      .map((p) => ({
+        id: p.responseId as string,
+        points_awarded: p.pointsAwarded,
+      }))
+
+    if (responseUpdates.length > 0) {
+      await supabase.from('question_responses').upsert(responseUpdates)
+    }
+
+    // Update participants' scores/streaks (upsert to set per-row values)
+    const participantRows = participantUpdates.map((p) => ({
+      id: p.participantId,
+      total_score: p.totalScore,
+      current_streak: p.newStreak,
+    }))
+
+    if (participantRows.length > 0) {
+      await supabase.from('game_participants').upsert(participantRows)
+    }
+
+    setScoredQuestionIds((prev) => new Set(prev).add(question.id))
+  }
+
   const handleShowResults = async () => {
     if (!session || !currentQuestion) return
 
     await showResults()
     setPhase('results')
-    await fetchResponses(session.id, currentQuestion.id)
+    const fetchedResponses = await fetchResponses(session.id, currentQuestion.id)
+
+    // Apply scoring (no effect on warmups beyond preserving streaks)
+    await applyScores(currentQuestion, fetchedResponses)
 
     // Refresh participants to get updated scores
     const { data: participantsData } = await supabase

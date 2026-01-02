@@ -4,10 +4,60 @@ Vercel - Web, uses github to login
 Supabase - DB, uses github to login
 Github - repository
 
-Supabase DB password: uGzoa78PEoONc3EH
+Supabase main DB password: uGzoa78PEoONc3EH
+
+production URL
+https://quiz-app-one-kappa-18.vercel.app
 
 --------------
 
 maybe use
 claude --dangerously-skip-permissions
 
+-----
+
+Quiz App - Ready to Go!
+
+  | Environment | URL                                      |
+  |-------------|------------------------------------------|
+  | Production  | https://quiz-app-one-kappa-18.vercel.app |
+  | Local Dev   | npm run dev → http://localhost:5173      |
+
+  -----
+
+  Quiz App Overview
+
+  This is a fully-featured multiplayer quiz application (similar to Kahoot) built for BCBA/RBT team training sessions. It's production-ready and well-organized.
+
+  Tech Stack:
+  - React 19 + TypeScript + Vite
+  - TailwindCSS for styling
+  - Supabase (PostgreSQL, Auth, Realtime)
+  - Zustand for state management
+  - Deployed on Vercel
+
+  Core Features:
+  ✅ Quiz creation & editing (multiple choice, true/false)
+  ✅ Real-time multiplayer gameplay with QR code join
+  ✅ Comprehensive scoring (base points + speed bonuses + streaks)
+  ✅ Warmup/trivia questions (don't affect scores)
+  ✅ Avatar customization system
+  ✅ Leaderboards & game history
+  ✅ Dual mode support (authenticated or guest)
+  ✅ Host & player interfaces with live updates
+
+  Project State:
+  - No TODOs found in the codebase
+  - Clean, well-organized structure
+  - Properly configured for deployment
+  - All core features appear complete
+
+  --------
+
+  Some things I would like to change.
+  avatars are showing twice
+  I want the accessories on the avatar like kahoots does, like glasses or hat should display on the avatar (fox wearing a hat, panda wearing glasses etc...), how complicated would that be?
+  
+
+
+  --

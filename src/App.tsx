@@ -1,9 +1,12 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
+import { useGuestStore } from './stores/guestStore'
+import { config } from './lib/config'
 import { ToastProvider } from './components/ui/Toast'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
+import { GuestSetup } from './pages/GuestSetup'
 import { Home } from './pages/Home'
 import { Settings } from './pages/Settings'
 import { QuizList } from './pages/quiz/QuizList'
@@ -33,22 +36,30 @@ function LoadingScreen() {
   )
 }
 
-// Protected route wrapper
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+// Route wrapper - handles both auth and guest modes
+function AppRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuthStore()
+  const { isSetup } = useGuestStore()
 
-  if (loading) {
-    return <LoadingScreen />
-  }
-
-  if (!session) {
-    return <Navigate to="/login" replace />
+  if (config.authRequired) {
+    // Auth mode: require login
+    if (loading) {
+      return <LoadingScreen />
+    }
+    if (!session) {
+      return <Navigate to="/login" replace />
+    }
+  } else {
+    // Guest mode: require guest setup
+    if (!isSetup) {
+      return <Navigate to="/welcome" replace />
+    }
   }
 
   return <>{children}</>
 }
 
-// Public route wrapper (redirects to home if already logged in)
+// Public route wrapper (for login/register when auth is required)
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuthStore()
 
@@ -67,143 +78,153 @@ function App() {
   const { initialize, loading } = useAuthStore()
 
   useEffect(() => {
-    initialize()
+    // Only initialize auth if required
+    if (config.authRequired) {
+      initialize()
+    }
   }, [initialize])
 
-  if (loading) {
+  if (config.authRequired && loading) {
     return <LoadingScreen />
   }
 
   return (
     <ToastProvider>
-    <BrowserRouter>
-      <Routes>
-        {/* Public routes */}
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PublicRoute>
-              <Register />
-            </PublicRoute>
-          }
-        />
+      <BrowserRouter>
+        <Routes>
+          {/* Welcome/Setup route for guest mode */}
+          <Route path="/welcome" element={<GuestSetup />} />
 
-        {/* Player routes - accessible without login */}
-        <Route path="/join" element={<JoinGame />} />
-        <Route path="/play/lobby" element={<PlayerLobby />} />
-        <Route path="/play/game" element={<PlayerGame />} />
-        <Route path="/play/final" element={<PlayerFinal />} />
+          {/* Auth routes - only used when authRequired is true */}
+          {config.authRequired && (
+            <>
+              <Route
+                path="/login"
+                element={
+                  <PublicRoute>
+                    <Login />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/register"
+                element={
+                  <PublicRoute>
+                    <Register />
+                  </PublicRoute>
+                }
+              />
+            </>
+          )}
 
-        {/* Protected routes */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/quizzes"
-          element={
-            <ProtectedRoute>
-              <QuizList />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/quizzes/create"
-          element={
-            <ProtectedRoute>
-              <QuizCreate />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/quizzes/:id/edit"
-          element={
-            <ProtectedRoute>
-              <QuizEdit />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/leaderboard"
-          element={
-            <ProtectedRoute>
-              <Leaderboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute>
-              <GameHistory />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/history/:id"
-          element={
-            <ProtectedRoute>
-              <GameDetail />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/host"
-          element={
-            <ProtectedRoute>
-              <HostSetup />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/host/lobby"
-          element={
-            <ProtectedRoute>
-              <HostLobby />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/host/game"
-          element={
-            <ProtectedRoute>
-              <HostGame />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/host/final"
-          element={
-            <ProtectedRoute>
-              <HostFinal />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
+          {/* Player routes - always accessible (they have their own setup) */}
+          <Route path="/join" element={<JoinGame />} />
+          <Route path="/play/lobby" element={<PlayerLobby />} />
+          <Route path="/play/game" element={<PlayerGame />} />
+          <Route path="/play/final" element={<PlayerFinal />} />
 
-        {/* Catch-all redirect */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Main app routes */}
+          <Route
+            path="/"
+            element={
+              <AppRoute>
+                <Home />
+              </AppRoute>
+            }
+          />
+          <Route
+            path="/quizzes"
+            element={
+              <AppRoute>
+                <QuizList />
+              </AppRoute>
+            }
+          />
+          <Route
+            path="/quizzes/create"
+            element={
+              <AppRoute>
+                <QuizCreate />
+              </AppRoute>
+            }
+          />
+          <Route
+            path="/quizzes/:id/edit"
+            element={
+              <AppRoute>
+                <QuizEdit />
+              </AppRoute>
+            }
+          />
+          <Route
+            path="/leaderboard"
+            element={
+              <AppRoute>
+                <Leaderboard />
+              </AppRoute>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <AppRoute>
+                <GameHistory />
+              </AppRoute>
+            }
+          />
+          <Route
+            path="/history/:id"
+            element={
+              <AppRoute>
+                <GameDetail />
+              </AppRoute>
+            }
+          />
+          <Route
+            path="/host"
+            element={
+              <AppRoute>
+                <HostSetup />
+              </AppRoute>
+            }
+          />
+          <Route
+            path="/host/lobby"
+            element={
+              <AppRoute>
+                <HostLobby />
+              </AppRoute>
+            }
+          />
+          <Route
+            path="/host/game"
+            element={
+              <AppRoute>
+                <HostGame />
+              </AppRoute>
+            }
+          />
+          <Route
+            path="/host/final"
+            element={
+              <AppRoute>
+                <HostFinal />
+              </AppRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <AppRoute>
+                <Settings />
+              </AppRoute>
+            }
+          />
+
+          {/* Catch-all redirect */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
     </ToastProvider>
   )
 }

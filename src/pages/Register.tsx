@@ -6,13 +6,14 @@ import { Input } from '../components/ui/Input'
 import { Card } from '../components/ui/Card'
 export function Register() {
   const navigate = useNavigate()
-  const { signUp, loading } = useAuthStore()
+  const { signUp } = useAuthStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [role, setRole] = useState<'bcba' | 'rbt'>('rbt')
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,12 +29,17 @@ export function Register() {
       return
     }
 
-    const { error } = await signUp(email, password, displayName, role)
+    setIsSubmitting(true)
+    try {
+      const { error } = await signUp(email, password, displayName, role)
 
-    if (error) {
-      setError(error.message)
-    } else {
-      navigate('/')
+      if (error) {
+        setError(error.message)
+      } else {
+        navigate('/')
+      }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -125,7 +131,7 @@ export function Register() {
             type="submit"
             className="w-full"
             size="lg"
-            isLoading={loading}
+            isLoading={isSubmitting}
           >
             Create Account
           </Button>

@@ -91,11 +91,11 @@ export interface Database {
       quizzes: {
         Row: {
           id: string
-          organization_id: string
-          creator_id: string
+          organization_id: string | null
+          creator_id: string | null
+          creator_name: string
           title: string
           description: string | null
-          patient_code: string | null
           share_code: string
           is_active: boolean
           created_at: string
@@ -107,11 +107,11 @@ export interface Database {
         }
         Insert: {
           id?: string
-          organization_id: string
-          creator_id: string
+          organization_id?: string | null
+          creator_id?: string | null
+          creator_name: string
           title: string
           description?: string | null
-          patient_code?: string | null
           share_code?: string
           is_active?: boolean
           created_at?: string
@@ -123,11 +123,11 @@ export interface Database {
         }
         Update: {
           id?: string
-          organization_id?: string
-          creator_id?: string
+          organization_id?: string | null
+          creator_id?: string | null
+          creator_name?: string
           title?: string
           description?: string | null
-          patient_code?: string | null
           share_code?: string
           is_active?: boolean
           created_at?: string
@@ -214,7 +214,7 @@ export interface Database {
         Insert: {
           id?: string
           quiz_id: string
-          host_id: string
+          host_id?: string | null
           game_pin: string
           status?: GameStatus
           current_question_index?: number

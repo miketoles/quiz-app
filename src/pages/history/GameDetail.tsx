@@ -180,11 +180,6 @@ export function GameDetail() {
               <span className="text-white">{quiz.title}</span>
             </div>
             <h1 className="text-3xl font-bold text-white">{quiz.title}</h1>
-            {quiz.patient_code && (
-              <span className="inline-block mt-2 px-3 py-1 bg-primary/30 rounded-lg text-sm text-white">
-                {quiz.patient_code}
-              </span>
-            )}
             <p className="text-white/60 mt-2">
               {formatDate(session.ended_at || session.created_at)}
             </p>

@@ -7,21 +7,35 @@ import { Card } from '../components/ui/Card'
 
 export function Login() {
   const navigate = useNavigate()
-  const { signIn, loading } = useAuthStore()
+  const { signIn } = useAuthStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
-    const { error } = await signIn(email, password)
+    if (!email || !password) {
+      setError('Please enter email and password')
+      return
+    }
 
-    if (error) {
-      setError(error.message)
-    } else {
-      navigate('/')
+    setIsSubmitting(true)
+    try {
+      const { error } = await signIn(email, password)
+
+      if (error) {
+        setError(error.message)
+      } else {
+        navigate('/')
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -63,7 +77,7 @@ export function Login() {
             type="submit"
             className="w-full"
             size="lg"
-            isLoading={loading}
+            isLoading={isSubmitting}
           >
             Sign In
           </Button>

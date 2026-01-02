@@ -48,12 +48,15 @@ export function HostSetup() {
   }
 
   const handleStartGame = async () => {
-    if (!selectedQuiz || !profile) return
+    if (!selectedQuiz) return
+
+    // Use profile id if logged in, otherwise null for guest hosts
+    const hostId = profile?.id || null
 
     setStarting(true)
     setError('')
 
-    const { error: createError, pin } = await createGame(selectedQuiz.id, profile.id, {
+    const { error: createError, pin } = await createGame(selectedQuiz.id, hostId, {
       timeLimit: selectedQuiz.time_limit,
       speedScoring: selectedQuiz.speed_scoring,
       pointsPerQuestion: selectedQuiz.points_per_question,
@@ -119,11 +122,6 @@ export function HostSetup() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="text-lg font-bold text-white">{quiz.title}</h3>
-                    {quiz.patient_code && (
-                      <span className="shrink-0 px-2 py-0.5 bg-primary/30 rounded text-xs text-white/80">
-                        {quiz.patient_code}
-                      </span>
-                    )}
                   </div>
                   {quiz.description && (
                     <p className="text-white/60 text-sm mt-2 line-clamp-2">{quiz.description}</p>

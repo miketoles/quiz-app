@@ -29,11 +29,14 @@ export function QuizEdit() {
   // Quiz form
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [patientCode, setPatientCode] = useState('')
   const [timeLimit, setTimeLimit] = useState(20)
   const [speedScoring, setSpeedScoring] = useState(true)
   const [pointsPerQuestion, setPointsPerQuestion] = useState(1000)
   const [autoAdvance, setAutoAdvance] = useState(false)
+
+  // Track unsaved changes per question
+  const [unsavedQuestions, setUnsavedQuestions] = useState<Set<string>>(new Set())
+  const [savingQuestions, setSavingQuestions] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (quizId) {
@@ -60,7 +63,6 @@ export function QuizEdit() {
     setQuiz(quizData)
     setTitle(quizData.title)
     setDescription(quizData.description || '')
-    setPatientCode(quizData.patient_code || '')
     setTimeLimit(quizData.time_limit)
     setSpeedScoring(quizData.speed_scoring)
     setPointsPerQuestion(quizData.points_per_question)
@@ -106,7 +108,6 @@ export function QuizEdit() {
       .update({
         title: title.trim(),
         description: description.trim() || null,
-        patient_code: patientCode.trim() || null,
         time_limit: timeLimit,
         speed_scoring: speedScoring,
         points_per_question: pointsPerQuestion,
@@ -131,7 +132,7 @@ export function QuizEdit() {
       .from('questions')
       .insert({
         quiz_id: quizId,
-        question_text: 'New Question',
+        question_text: '',
         type: 'multiple_choice' as const,
         order_index: newOrderIndex,
         is_warmup: false,
@@ -160,23 +161,101 @@ export function QuizEdit() {
     setQuestions([...questions, { ...data, options: optionsData || [] }])
   }
 
-  const handleUpdateQuestion = async (
-    questionId: string,
-    updates: Partial<Question>
-  ) => {
-    const { error: updateError } = await supabase
-      .from('questions')
-      .update(updates)
-      .eq('id', questionId)
+  const handleAddOption = async (questionId: string) => {
+    const question = questions.find((q) => q.id === questionId)
+    if (!question) return
 
-    if (updateError) {
-      setError(updateError.message)
+    const nextIndex = question.options.length
+    // For multiple choice we cap at 4 options
+    if (nextIndex >= 4) return
+
+    const makeCorrect = !question.options.some((o) => o.is_correct)
+
+    const { data, error } = await supabase
+      .from('question_options')
+      .insert({
+        question_id: questionId,
+        option_text: '',
+        is_correct: makeCorrect,
+        order_index: nextIndex,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      setError(error.message)
       return
     }
 
     setQuestions(
+      questions.map((q) =>
+        q.id === questionId ? { ...q, options: [...q.options, data] } : q
+      )
+    )
+    setUnsavedQuestions((prev) => new Set(prev).add(questionId))
+  }
+
+  const handleUpdateQuestion = (
+    questionId: string,
+    updates: Partial<Question>
+  ) => {
+    // Update local state only (no database update)
+    setQuestions(
       questions.map((q) => (q.id === questionId ? { ...q, ...updates } : q))
     )
+
+    // Mark as unsaved
+    setUnsavedQuestions((prev) => new Set(prev).add(questionId))
+  }
+
+  const handleSaveQuestion = async (questionId: string) => {
+    const question = questions.find((q) => q.id === questionId)
+    if (!question) return
+
+    setSavingQuestions((prev) => new Set(prev).add(questionId))
+    setError('')
+
+    try {
+      // Save question
+      const { error: questionError } = await supabase
+        .from('questions')
+        .update({
+          question_text: question.question_text,
+          type: question.type,
+          is_warmup: question.is_warmup,
+        })
+        .eq('id', questionId)
+
+      if (questionError) throw questionError
+
+      // Save all options for this question
+      await Promise.all(
+        question.options.map((option) =>
+          supabase
+            .from('question_options')
+            .update({
+              option_text: option.option_text,
+              is_correct: option.is_correct,
+            })
+            .eq('id', option.id)
+        )
+      )
+
+      // Mark as saved
+      setUnsavedQuestions((prev) => {
+        const next = new Set(prev)
+        next.delete(questionId)
+        return next
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save question')
+    } finally {
+      setSavingQuestions((prev) => {
+        const next = new Set(prev)
+        next.delete(questionId)
+        return next
+      })
+    }
   }
 
   const handleDeleteQuestion = async (questionId: string) => {
@@ -232,21 +311,12 @@ export function QuizEdit() {
     setQuestions(newQuestions)
   }
 
-  const handleUpdateOption = async (
-    optionId: string,
+  const handleUpdateOption = (
     questionId: string,
+    optionId: string,
     updates: Partial<QuestionOption>
   ) => {
-    const { error: updateError } = await supabase
-      .from('question_options')
-      .update(updates)
-      .eq('id', optionId)
-
-    if (updateError) {
-      setError(updateError.message)
-      return
-    }
-
+    // Update local state only (no database update)
     setQuestions(
       questions.map((q) => {
         if (q.id !== questionId) return q
@@ -258,22 +328,13 @@ export function QuizEdit() {
         }
       })
     )
+
+    // Mark question as unsaved
+    setUnsavedQuestions((prev) => new Set(prev).add(questionId))
   }
 
-  const handleSetCorrectOption = async (questionId: string, optionId: string) => {
-    const question = questions.find((q) => q.id === questionId)
-    if (!question) return
-
-    // Set all options to not correct, then set the selected one to correct
-    await Promise.all(
-      question.options.map((o) =>
-        supabase
-          .from('question_options')
-          .update({ is_correct: o.id === optionId })
-          .eq('id', o.id)
-      )
-    )
-
+  const handleSetCorrectOption = (questionId: string, optionId: string) => {
+    // Update local state only (no database update)
     setQuestions(
       questions.map((q) => {
         if (q.id !== questionId) return q
@@ -286,6 +347,9 @@ export function QuizEdit() {
         }
       })
     )
+
+    // Mark question as unsaved
+    setUnsavedQuestions((prev) => new Set(prev).add(questionId))
   }
 
   const timeLimitOptions = [
@@ -362,20 +426,12 @@ export function QuizEdit() {
         <Card>
           <h2 className="text-xl font-bold text-white mb-6">Quiz Details</h2>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label="Quiz Title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-              <Input
-                label="Patient Code"
-                placeholder="e.g., 301 AB"
-                value={patientCode}
-                onChange={(e) => setPatientCode(e.target.value)}
-              />
-            </div>
+            <Input
+              label="Quiz Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
 
             <Textarea
               label="Description"
@@ -448,11 +504,15 @@ export function QuizEdit() {
                 onMoveUp={() => handleMoveQuestion(question.id, 'up')}
                 onMoveDown={() => handleMoveQuestion(question.id, 'down')}
                 onUpdateOption={(optionId, updates) =>
-                  handleUpdateOption(optionId, question.id, updates)
+                  handleUpdateOption(question.id, optionId, updates)
                 }
+                onAddOption={() => handleAddOption(question.id)}
                 onSetCorrectOption={(optionId) =>
                   handleSetCorrectOption(question.id, optionId)
                 }
+                onSave={() => handleSaveQuestion(question.id)}
+                hasUnsavedChanges={unsavedQuestions.has(question.id)}
+                isSaving={savingQuestions.has(question.id)}
               />
             ))
           )}

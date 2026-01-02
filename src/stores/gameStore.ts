@@ -21,7 +21,7 @@ interface GameState {
   channels: RealtimeChannel[]
 
   // Actions
-  createGame: (quizId: string, hostId: string, settings: {
+  createGame: (quizId: string, hostId: string | null, settings: {
     timeLimit: number
     speedScoring: boolean
     pointsPerQuestion: number
@@ -54,7 +54,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   answerStartTime: null,
   channels: [],
 
-  createGame: async (quizId, hostId, settings) => {
+  createGame: async (quizId, hostId: string | null, settings) => {
     try {
       const pin = generateGamePin()
 

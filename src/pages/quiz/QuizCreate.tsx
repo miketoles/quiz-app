@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
+import { useGuestStore } from '../../stores/guestStore'
 import { Layout } from '../../components/layout/Layout'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -14,13 +15,13 @@ import { DEFAULT_SETTINGS } from '../../lib/constants'
 export function QuizCreate() {
   const navigate = useNavigate()
   const { profile, settings } = useAuthStore()
+  const { guestName } = useGuestStore()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   // Quiz form
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [patientCode, setPatientCode] = useState('')
 
   // Settings (use user defaults or system defaults)
   const [timeLimit, setTimeLimit] = useState<number>(
@@ -45,21 +46,21 @@ export function QuizCreate() {
       return
     }
 
-    if (!profile?.organization_id) {
-      setError('You must be part of an organization to create quizzes')
-      return
-    }
-
     setSaving(true)
+
+    // Get creator name - use profile if logged in, otherwise guest name
+    // creator_id must be null for guests (it's a UUID foreign key to profiles)
+    const creatorName = profile?.display_name || guestName || 'Anonymous'
+    const creatorId = profile?.id || null
 
     const { data, error: createError } = await supabase
       .from('quizzes')
       .insert({
         title: title.trim(),
         description: description.trim() || null,
-        patient_code: patientCode.trim() || null,
-        creator_id: profile.id,
-        organization_id: profile.organization_id,
+        creator_id: creatorId,
+        creator_name: creatorName,
+        organization_id: profile?.organization_id || null,
         time_limit: timeLimit,
         speed_scoring: speedScoring,
         points_per_question: pointsPerQuestion,
@@ -117,21 +118,11 @@ export function QuizCreate() {
             <div className="space-y-4">
               <Input
                 label="Quiz Title"
-                placeholder="e.g., 301 AB - Weekly BIP Review"
+                placeholder="e.g., Weekly Team Quiz"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
               />
-
-              <Input
-                label="Patient Code (optional)"
-                placeholder="e.g., 301 AB"
-                value={patientCode}
-                onChange={(e) => setPatientCode(e.target.value)}
-              />
-              <p className="text-white/40 text-xs -mt-2">
-                Use room + initials format. Never enter full patient names.
-              </p>
 
               <Textarea
                 label="Description (optional)"

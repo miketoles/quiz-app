@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
+import { useGuestStore } from '../../stores/guestStore'
+import { config } from '../../lib/config'
 import { Layout } from '../../components/layout/Layout'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -14,7 +16,8 @@ export function QuizList() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
 
-  const isBCBA = profile?.role === 'bcba' || profile?.role === 'admin'
+  // In guest mode, everyone can create/host. In auth mode, only BCBAs/admins.
+  const canCreate = !config.authRequired || profile?.role === 'bcba' || profile?.role === 'admin'
 
   useEffect(() => {
     fetchQuizzes()
@@ -38,7 +41,6 @@ export function QuizList() {
   const filteredQuizzes = quizzes.filter(
     (quiz) =>
       quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quiz.patient_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quiz.description?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -50,11 +52,11 @@ export function QuizList() {
           <div>
             <h1 className="text-3xl font-bold text-white">Quizzes</h1>
             <p className="text-white/60 mt-1">
-              {isBCBA ? 'Create and manage your quizzes' : 'Browse available quizzes'}
+              {canCreate ? 'Create and manage your quizzes' : 'Browse available quizzes'}
             </p>
           </div>
 
-          {isBCBA && (
+          {canCreate && (
             <Link to="/quizzes/create">
               <Button size="lg">
                 + Create Quiz
@@ -93,11 +95,11 @@ export function QuizList() {
               <>
                 <h2 className="text-xl font-bold text-white">No quizzes yet</h2>
                 <p className="text-white/60 mt-2">
-                  {isBCBA
+                  {canCreate
                     ? 'Create your first quiz to get started!'
                     : 'No quizzes have been created yet.'}
                 </p>
-                {isBCBA && (
+                {canCreate && (
                   <Link to="/quizzes/create" className="inline-block mt-4">
                     <Button>Create Quiz</Button>
                   </Link>
@@ -111,7 +113,7 @@ export function QuizList() {
               <QuizCard
                 key={quiz.id}
                 quiz={quiz}
-                isBCBA={isBCBA}
+                canHost={canCreate}
                 onRefresh={fetchQuizzes}
               />
             ))}
@@ -124,14 +126,17 @@ export function QuizList() {
 
 interface QuizCardProps {
   quiz: Quiz
-  isBCBA: boolean
+  canHost: boolean
   onRefresh: () => void
 }
 
-function QuizCard({ quiz, isBCBA, onRefresh }: QuizCardProps) {
+function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
   const [deleting, setDeleting] = useState(false)
   const { profile } = useAuthStore()
-  const isOwner = profile?.id === quiz.creator_id
+  const { guestId } = useGuestStore()
+  // Owner check: match profile id OR guest id with creator_id
+  const isOwner = (profile?.id && profile.id === quiz.creator_id) ||
+                  (guestId && guestId === quiz.creator_id)
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this quiz? This cannot be undone.')) {
@@ -155,11 +160,6 @@ function QuizCard({ quiz, isBCBA, onRefresh }: QuizCardProps) {
       <div className="flex-1">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-lg font-bold text-white line-clamp-2">{quiz.title}</h3>
-          {quiz.patient_code && (
-            <span className="shrink-0 px-2 py-0.5 bg-primary/30 rounded text-xs text-white/80">
-              {quiz.patient_code}
-            </span>
-          )}
         </div>
 
         {quiz.description && (
@@ -184,7 +184,7 @@ function QuizCard({ quiz, isBCBA, onRefresh }: QuizCardProps) {
       </div>
 
       <div className="flex gap-2 mt-4 pt-4 border-t border-white/10">
-        {isBCBA && (
+        {canHost && (
           <Link to={`/host?quiz=${quiz.id}`} className="flex-1">
             <Button className="w-full" variant="primary">
               Host
@@ -208,9 +208,9 @@ function QuizCard({ quiz, isBCBA, onRefresh }: QuizCardProps) {
           </>
         )}
 
-        {!isBCBA && (
+        {!canHost && (
           <div className="text-white/40 text-sm">
-            Ask a BCBA to host this quiz
+            You can host this quiz from the Home screen
           </div>
         )}
       </div>
