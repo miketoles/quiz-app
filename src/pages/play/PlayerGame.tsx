@@ -92,7 +92,20 @@ export function PlayerGame() {
     )
   }
 
-  // Answer screen
+  // Normalize options: for true/false, only show those two; otherwise first four
+  const renderOptions = () => {
+    if (!currentQuestion) return []
+    if (currentQuestion.type === 'true_false') {
+      return currentQuestion.options
+        .filter((o) => o.option_text === 'True' || o.option_text === 'False')
+        .sort((a) => (a.option_text === 'True' ? -1 : 1))
+        .map((option, index) => ({ option, index }))
+    }
+    return currentQuestion.options.slice(0, 4).map((option, index) => ({ option, index }))
+  }
+
+  const optionEntries = renderOptions()
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -125,7 +138,7 @@ export function PlayerGame() {
 
       {/* Answer buttons - full screen */}
       <div className="flex-1 grid grid-cols-1 gap-2 p-2">
-        {currentQuestion.options.slice(0, 4).map((option, index) => (
+        {optionEntries.map(({ option, index }) => (
           <button
             key={option.id}
             type="button"

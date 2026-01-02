@@ -271,6 +271,20 @@ export function HostGame() {
 
   const colors: ('red' | 'blue' | 'yellow' | 'green')[] = ['red', 'blue', 'yellow', 'green']
 
+  // Normalize options: true/false should only show those two
+  const renderOptions = () => {
+    if (!currentQuestion) return []
+    if (currentQuestion.type === 'true_false') {
+      return currentQuestion.options
+        .filter((o) => o.option_text === 'True' || o.option_text === 'False')
+        .sort((a) => (a.option_text === 'True' ? -1 : 1))
+        .map((option, index) => ({ option, index }))
+    }
+    return currentQuestion.options.slice(0, 4).map((option, index) => ({ option, index }))
+  }
+
+  const optionEntries = renderOptions()
+
   if (loading || !currentQuestion) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -330,7 +344,7 @@ export function HostGame() {
 
             {/* Answer Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl w-full">
-              {currentQuestion.options.slice(0, 4).map((option, index) => (
+              {optionEntries.map(({ option, index }) => (
                 <AnswerButton
                   key={option.id}
                   color={colors[index]}
@@ -360,7 +374,7 @@ export function HostGame() {
 
             {/* Answer Results */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl w-full mb-8">
-              {currentQuestion.options.slice(0, 4).map((option, index) => (
+              {optionEntries.map(({ option, index }) => (
                 <AnswerButton
                   key={option.id}
                   color={colors[index]}
