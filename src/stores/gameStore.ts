@@ -19,6 +19,7 @@ interface GameState {
 
   // Realtime subscriptions
   channels: RealtimeChannel[]
+  pollTimer: number | null
 
   // Actions
   createGame: (quizId: string, hostId: string | null, settings: {
@@ -53,6 +54,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectedOptionId: null,
   answerStartTime: null,
   channels: [],
+  pollTimer: null,
 
   createGame: async (quizId, hostId: string | null, settings) => {
     try {
@@ -303,6 +305,10 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // Unsubscribe from existing channels
     channels.forEach(ch => ch.unsubscribe())
+    if (get().pollTimer) {
+      clearInterval(get().pollTimer!)
+      set({ pollTimer: null })
+    }
 
     // Subscribe to game session changes
     const sessionChannel = supabase
@@ -353,12 +359,44 @@ export const useGameStore = create<GameState>((set, get) => ({
       )
       .subscribe()
 
-    set({ channels: [sessionChannel, participantsChannel] })
+    // Fallback polling to keep session/participants fresh (e.g., if realtime is blocked)
+    const timer = window.setInterval(async () => {
+      const { data: sessionData } = await supabase
+        .from('game_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .single()
+
+      if (sessionData) {
+        const { questions } = get()
+        set({
+          session: sessionData,
+          currentQuestion: questions[sessionData.current_question_index] || null,
+          answerStartTime: sessionData.status === 'question' ? Date.now() : null,
+          hasAnswered: sessionData.status === 'question' ? false : get().hasAnswered,
+        })
+      }
+
+      const { data: participantRows } = await supabase
+        .from('game_participants')
+        .select('*')
+        .eq('game_session_id', sessionId)
+        .order('total_score', { ascending: false })
+
+      if (participantRows) {
+        set({ participants: participantRows })
+      }
+    }, 2000)
+
+    set({ channels: [sessionChannel, participantsChannel], pollTimer: timer })
   },
 
   unsubscribeFromGame: () => {
     const { channels } = get()
     channels.forEach(ch => ch.unsubscribe())
+    if (get().pollTimer) {
+      clearInterval(get().pollTimer!)
+    }
     set({ channels: [] })
   },
 
