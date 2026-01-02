@@ -157,6 +157,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         session,
         questions: questionsWithOptions,
         participantId: participant.id,
+        // Seed participants immediately so player lobby shows without waiting for realtime
+        participants: [participant],
+        currentQuestion: questionsWithOptions[session.current_question_index] || null,
       })
 
       // Subscribe to realtime updates
