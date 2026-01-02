@@ -450,6 +450,24 @@ export function QuizEdit() {
             <p className="text-white/60 mt-1">{questions.length} questions</p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              className="text-error hover:bg-error/20"
+              onClick={async () => {
+                if (!confirm('Delete this quiz and all its questions?')) return
+                const { error: deleteError } = await supabase
+                  .from('quizzes')
+                  .delete()
+                  .eq('id', quizId)
+                if (deleteError) {
+                  setError(deleteError.message)
+                  return
+                }
+                navigate('/quizzes')
+              }}
+            >
+              Delete Quiz
+            </Button>
             <Button variant="secondary" onClick={() => navigate('/quizzes')}>
               Back
             </Button>

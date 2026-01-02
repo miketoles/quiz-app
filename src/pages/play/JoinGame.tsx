@@ -52,8 +52,8 @@ export function JoinGame() {
       return
     }
 
-    if (nickname.length < 2 || nickname.length > 20) {
-      setError('Nickname must be 2-20 characters')
+    if (nickname.length < 1 || nickname.length > 20) {
+      setError('Nickname must be 1-20 characters')
       return
     }
 

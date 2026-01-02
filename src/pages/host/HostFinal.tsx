@@ -82,7 +82,7 @@ export function HostFinal() {
     <div className="min-h-screen bg-background p-8">
       {/* Header */}
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Game Over!</h1>
+        <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Final Results</h1>
         <p className="text-white/60 text-xl">{quiz?.title}</p>
       </div>
 
@@ -115,7 +115,7 @@ export function HostFinal() {
           {topThree[0] && (
             <div className="flex flex-col items-center -mt-8">
               <div className="bg-yellow-500/20 rounded-t-2xl p-6 w-56 text-center border-2 border-yellow-500">
-                <span className="text-4xl mb-2 block">crown</span>
+                <span className="text-4xl mb-2 block">🏆</span>
                 <Avatar
                   base={topThree[0].avatar_base}
                   accessory={topThree[0].avatar_accessory}

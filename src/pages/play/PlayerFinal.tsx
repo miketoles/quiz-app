@@ -41,12 +41,12 @@ export function PlayerFinal() {
       <div className="text-center mb-6">
         {isWinner ? (
           <div className="animate-bounce-in">
-            <span className="text-6xl block mb-2">crown</span>
+            <span className="text-6xl block mb-2">🏆</span>
             <h1 className="text-4xl font-bold text-yellow-400">You Won!</h1>
           </div>
         ) : isTop3 ? (
           <div className="animate-bounce-in">
-            <span className="text-5xl block mb-2">medal</span>
+            <span className="text-5xl block mb-2">🥇</span>
             <h1 className="text-3xl font-bold text-white">Top 3!</h1>
           </div>
         ) : (
