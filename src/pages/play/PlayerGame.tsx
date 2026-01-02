@@ -157,7 +157,7 @@ export function PlayerGame() {
       {hasAnswered && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center pointer-events-none">
           <div className="bg-surface rounded-2xl p-8 text-center animate-bounce-in">
-            <span className="text-5xl block mb-4">\u2714\uFE0F</span>
+            <span className="text-5xl block mb-4">✅</span>
             <h2 className="text-xl font-bold text-white">Answer Submitted!</h2>
             <p className="text-white/60 mt-2">Wait for results...</p>
           </div>
