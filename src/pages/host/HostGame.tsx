@@ -187,18 +187,29 @@ export function HostGame() {
       }))
 
     if (responseUpdates.length > 0) {
-      await supabase.from('question_responses').upsert(responseUpdates)
+      await Promise.all(
+        responseUpdates.map((r) =>
+          supabase
+            .from('question_responses')
+            .update({ points_awarded: r.points_awarded })
+            .eq('id', r.id)
+        )
+      )
     }
 
-    // Update participants' scores/streaks (upsert to set per-row values)
-    const participantRows = participantUpdates.map((p) => ({
-      id: p.participantId,
-      total_score: p.totalScore,
-      current_streak: p.newStreak,
-    }))
-
-    if (participantRows.length > 0) {
-      await supabase.from('game_participants').upsert(participantRows)
+    // Update participants' scores/streaks per row (avoid upsert required fields)
+    if (participantUpdates.length > 0) {
+      await Promise.all(
+        participantUpdates.map((p) =>
+          supabase
+            .from('game_participants')
+            .update({
+              total_score: p.totalScore,
+              current_streak: p.newStreak,
+            })
+            .eq('id', p.participantId)
+        )
+      )
     }
 
     setScoredQuestionIds((prev) => new Set(prev).add(question.id))
