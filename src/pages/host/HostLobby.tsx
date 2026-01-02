@@ -18,6 +18,7 @@ export function HostLobby() {
   const [participants, setParticipants] = useState<GameParticipant[]>([])
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!gamePin) {
@@ -49,6 +50,7 @@ export function HostLobby() {
       .single()
 
     setQuiz(quizData)
+    setSessionId(sessionData.id)
 
     // Fetch existing participants
     const { data: participantsData } = await supabase
@@ -70,6 +72,7 @@ export function HostLobby() {
       .single()
 
     if (!sessionData) return
+    setSessionId(sessionData.id)
 
     // Subscribe to new participants
     const channel = supabase
@@ -106,6 +109,23 @@ export function HostLobby() {
       supabase.removeChannel(channel)
     }
   }
+
+  // Fallback polling in case realtime misses events (mobile join hanging)
+  useEffect(() => {
+    if (!sessionId) return
+
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from('game_participants')
+        .select('*')
+        .eq('game_session_id', sessionId)
+        .order('joined_at')
+
+      if (data) setParticipants(data)
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [sessionId])
 
   const handleStartGame = async () => {
     setStarting(true)
