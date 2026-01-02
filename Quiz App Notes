@@ -1,0 +1,13 @@
+Quiz app notes
+
+Vercel - Web, uses github to login
+Supabase - DB, uses github to login
+Github - repository
+
+Supabase DB password: uGzoa78PEoONc3EH
+
+--------------
+
+maybe use
+claude --dangerously-skip-permissions
+

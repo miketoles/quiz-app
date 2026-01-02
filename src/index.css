@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+/* Kahoot-inspired color palette */
+@theme {
+  /* Answer button colors */
+  --color-answer-red: #E21B3C;
+  --color-answer-blue: #1368CE;
+  --color-answer-yellow: #D89E00;
+  --color-answer-green: #26890C;
+
+  /* UI colors */
+  --color-primary: #46178F;
+  --color-primary-dark: #2E0F5C;
+  --color-background: #1A1A2E;
+  --color-surface: #16213E;
+  --color-success: #66BF39;
+  --color-error: #FF3355;
+
+  /* Fonts */
+  --font-display: 'Montserrat', system-ui, sans-serif;
+}
+
+/* Base styles */
+body {
+  @apply bg-background text-white antialiased;
+  font-family: var(--font-display);
+}
+
+#root {
+  @apply min-h-screen;
+}
+
+/* Custom utility classes */
+.btn-answer {
+  @apply w-full py-6 px-4 rounded-lg text-white font-bold text-lg
+         transform transition-all duration-150 ease-out
+         active:scale-95 hover:brightness-110
+         flex items-center justify-center gap-3;
+}
+
+.btn-answer-red { @apply bg-answer-red; }
+.btn-answer-blue { @apply bg-answer-blue; }
+.btn-answer-yellow { @apply bg-answer-yellow; }
+.btn-answer-green { @apply bg-answer-green; }
+
+.btn-primary {
+  @apply bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-lg
+         transform transition-all duration-150 ease-out active:scale-95;
+}
+
+.card {
+  @apply bg-surface rounded-xl p-6 shadow-lg;
+}
+
+/* Animation keyframes */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(102, 191, 57, 0.4); }
+  50% { box-shadow: 0 0 0 10px rgba(102, 191, 57, 0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-pulse-glow { animation: pulse-glow 1s ease-in-out infinite; }
+.animate-shake { animation: shake 0.3s ease-in-out; }
+.animate-bounce-in { animation: bounce-in 0.4s ease-out; }
+.animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+
+@keyframes slide-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up { animation: slide-up 0.3s ease-out forwards; }
+
+/* Responsive text utilities for TV display */
+@media (min-width: 1280px) {
+  .tv-text-xl { font-size: 2rem; }
+  .tv-text-2xl { font-size: 2.5rem; }
+  .tv-text-3xl { font-size: 3rem; }
+  .tv-text-4xl { font-size: 4rem; }
+}
+
+/* Safe area padding for mobile devices with notches */
+@supports (padding: max(0px)) {
+  .safe-area-inset-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .safe-area-inset-top {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+}
