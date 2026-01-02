@@ -10,6 +10,7 @@ interface GameState {
   participants: GameParticipant[]
   questions: (Question & { options: QuestionOption[] })[]
   currentQuestion: (Question & { options: QuestionOption[] }) | null
+  lastQuestionIndex: number
 
   // Player state
   participantId: string | null
@@ -55,6 +56,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   answerStartTime: null,
   channels: [],
   pollTimer: null,
+  lastQuestionIndex: -1,
 
   createGame: async (quizId, hostId: string | null, settings) => {
     try {
@@ -162,6 +164,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         // Seed participants immediately so player lobby shows without waiting for realtime
         participants: [participant],
         currentQuestion: questionsWithOptions[session.current_question_index] || null,
+        lastQuestionIndex: session.current_question_index ?? -1,
       })
 
       // Subscribe to realtime updates
@@ -310,6 +313,22 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({ pollTimer: null })
     }
 
+    // Helper to merge session updates without wiping player state mid-question
+    const applySessionUpdate = (newSession: GameSession) => {
+      const state = get()
+      const questionChanged = state.lastQuestionIndex !== newSession.current_question_index
+      const inQuestion = newSession.status === 'question'
+      const nextHasAnswered = questionChanged && inQuestion ? false : state.hasAnswered
+
+      set({
+        session: newSession,
+        currentQuestion: state.questions[newSession.current_question_index] || null,
+        answerStartTime: inQuestion ? Date.now() : null,
+        hasAnswered: nextHasAnswered,
+        lastQuestionIndex: newSession.current_question_index ?? state.lastQuestionIndex,
+      })
+    }
+
     // Subscribe to game session changes
     const sessionChannel = supabase
       .channel(`game-session-${sessionId}`)
@@ -322,15 +341,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           filter: `id=eq.${sessionId}`,
         },
         (payload) => {
-          const newSession = payload.new as GameSession
-          const { questions } = get()
-
-          set({
-            session: newSession,
-            currentQuestion: questions[newSession.current_question_index] || null,
-            answerStartTime: newSession.status === 'question' ? Date.now() : null,
-            hasAnswered: newSession.status === 'question' ? false : get().hasAnswered,
-          })
+          applySessionUpdate(payload.new as GameSession)
         }
       )
       .subscribe()
@@ -368,13 +379,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         .single()
 
       if (sessionData) {
-        const { questions } = get()
-        set({
-          session: sessionData,
-          currentQuestion: questions[sessionData.current_question_index] || null,
-          answerStartTime: sessionData.status === 'question' ? Date.now() : null,
-          hasAnswered: sessionData.status === 'question' ? false : get().hasAnswered,
-        })
+        applySessionUpdate(sessionData)
       }
 
       const { data: participantRows } = await supabase
