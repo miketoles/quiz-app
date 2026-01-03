@@ -1,6 +1,10 @@
 -- Allow managing quiz content when the quiz creator is null (guest-mode quizzes)
 -- This keeps auth-based policies intact while letting guest-created quizzes add/update options.
 
+-- Clean up in case policies were created manually
+DROP POLICY IF EXISTS "Guests can manage options for guest quizzes" ON question_options;
+DROP POLICY IF EXISTS "Guests can manage questions for guest quizzes" ON questions;
+
 -- Question options: permit inserts/updates when the parent quiz has no creator
 CREATE POLICY "Guests can manage options for guest quizzes" ON question_options
 FOR ALL
@@ -34,4 +38,3 @@ WITH CHECK (
     SELECT id FROM quizzes WHERE creator_id IS NULL
   )
 );
-

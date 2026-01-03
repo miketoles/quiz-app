@@ -52,10 +52,27 @@ Quiz App - Ready to Go!
   - Properly configured for deployment
   - All core features appear complete
 
+-----
+production URL
+https://quiz-n4m89j90k-miketoles-projects.vercel.app
+
+-----
+For normal changes you don’t need to repeat all that setup. Use this loop:
+
+Code changes: work locally, test (npm run dev), run npm run build if you want to precheck.
+Supabase: only when you add/modify migrations. After a migration, run supabase db push once.
+GitHub: commit and push (env vars/remote are already set):
+git add .
+git commit -m "Describe change"
+git push
+Vercel: push to main will auto-deploy with existing env vars. If you ever want to force a deploy from local:
+npx vercel --prod
+So the only extra command beyond git push is supabase db push when schema changes; otherwise push and Vercel builds.
+
   --------
 
   Some things I would like to change.
-  avatars are showing twice
+
   I want the accessories on the avatar like kahoots does, like glasses or hat should display on the avatar (fox wearing a hat, panda wearing glasses etc...), how complicated would that be?
   
 
