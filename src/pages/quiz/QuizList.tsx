@@ -132,8 +132,10 @@ interface QuizCardProps {
 
 function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
   const [deleting, setDeleting] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
+  const [hasHistory, setHasHistory] = useState(false)
   const { profile } = useAuthStore()
-  const { guestId } = useGuestStore()
+  const { guestId, guestName } = useGuestStore()
   // Owner check: match profile id OR guest id with creator_id
   // Consider guest-created quizzes (creator_id null) as deletable by current user
   const isOwner =
@@ -142,21 +144,132 @@ function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
     (profile?.id && profile.id === quiz.creator_id) ||
     (guestId && guestId === quiz.creator_id)
 
+  useEffect(() => {
+    const checkHistory = async () => {
+      const { data } = await supabase
+        .from('game_sessions')
+        .select('id')
+        .eq('quiz_id', quiz.id)
+        .limit(1)
+      setHasHistory(!!data?.length)
+    }
+    void checkHistory()
+  }, [quiz.id])
+
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this quiz? This cannot be undone.')) {
+    if (!confirm('Delete this quiz? This cannot be undone.')) {
+      return
+    }
+
+    if (hasHistory) {
+      alert('This quiz has already been played and cannot be deleted. Duplicate it to run again.')
       return
     }
 
     setDeleting(true)
-    const { error } = await supabase.from('quizzes').delete().eq('id', quiz.id)
+    try {
+      // Clean up related game data first (game_sessions → participants/responses)
+      const { data: sessions } = await supabase
+        .from('game_sessions')
+        .select('id')
+        .eq('quiz_id', quiz.id)
 
-    if (error) {
-      console.error('Error deleting quiz:', error)
-      alert('Failed to delete quiz')
-    } else {
+      const sessionIds = (sessions || []).map((s) => s.id)
+
+      if (sessionIds.length) {
+        // Delete responses
+        await supabase.from('question_responses').delete().in('game_session_id', sessionIds)
+        // Delete participants
+        await supabase.from('game_participants').delete().in('game_session_id', sessionIds)
+        // Delete sessions
+        await supabase.from('game_sessions').delete().in('id', sessionIds)
+      }
+
+      const { error } = await supabase.from('quizzes').delete().eq('id', quiz.id)
+      if (error) throw error
       onRefresh()
+    } catch (err) {
+      console.error('Error deleting quiz:', err)
+      alert('Failed to delete quiz')
     }
+
     setDeleting(false)
+  }
+
+  const handleDuplicate = async () => {
+    setDuplicating(true)
+    try {
+      const { data: questions } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('quiz_id', quiz.id)
+        .order('order_index')
+
+      const questionIds = (questions || []).map((q) => q.id)
+      const { data: options } = await supabase
+        .from('question_options')
+        .select('*')
+        .in('question_id', questionIds)
+        .order('order_index')
+
+      const { data: newQuiz, error: insertQuizError } = await supabase
+        .from('quizzes')
+        .insert({
+          title: `${quiz.title} (copy)`,
+          description: quiz.description,
+          creator_id: profile?.id || null,
+          creator_name: profile?.display_name || guestName || quiz.creator_name || 'Anonymous',
+          organization_id: quiz.organization_id || profile?.organization_id || null,
+          time_limit: quiz.time_limit,
+          speed_scoring: quiz.speed_scoring,
+          points_per_question: quiz.points_per_question,
+          auto_advance: quiz.auto_advance,
+          is_active: quiz.is_active,
+        })
+        .select()
+        .single()
+
+      if (insertQuizError || !newQuiz) throw insertQuizError
+
+      const { data: newQuestions } = await supabase
+        .from('questions')
+        .insert(
+          (questions || []).map((q) => ({
+            quiz_id: newQuiz.id,
+            type: q.type,
+            question_text: q.question_text,
+            order_index: q.order_index,
+            time_limit_override: q.time_limit_override,
+            is_warmup: (q as any).is_warmup ?? false,
+          }))
+        )
+        .select()
+
+      const idMap: Record<string, string> = {}
+      newQuestions?.forEach((nq) => {
+        const match = (questions || []).find((q) => q.order_index === nq.order_index)
+        if (match) idMap[match.id] = nq.id
+      })
+
+      if (options?.length) {
+        await supabase.from('question_options').insert(
+          options.map((o) => ({
+            question_id: idMap[o.question_id],
+            option_text: o.option_text,
+            is_correct: o.is_correct,
+            order_index: o.order_index,
+          }))
+        )
+      }
+
+      onRefresh()
+      alert('Quiz duplicated. You can edit or delete the new copy.')
+    } catch (err) {
+      console.error('Error duplicating quiz:', err)
+      alert('Failed to duplicate quiz')
+    } finally {
+      setDuplicating(false)
+    }
   }
 
   return (
@@ -164,6 +277,11 @@ function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
       <div className="flex-1">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-lg font-bold text-white line-clamp-2">{quiz.title}</h3>
+          {hasHistory && (
+            <span className="px-2 py-1 text-xs rounded-full bg-white/10 text-white/70">
+              Played
+            </span>
+          )}
         </div>
 
         {quiz.description && (
@@ -201,11 +319,21 @@ function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
             <Link to={`/quizzes/${quiz.id}/edit`}>
               <Button variant="secondary">Edit</Button>
             </Link>
+            {hasHistory && (
+              <Button
+                variant="secondary"
+                onClick={handleDuplicate}
+                isLoading={duplicating}
+              >
+                Duplicate
+              </Button>
+            )}
             <Button
               variant="ghost"
               onClick={handleDelete}
               isLoading={deleting}
-              className="text-error hover:bg-error/20"
+              className={`text-error hover:bg-error/20 ${hasHistory ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={hasHistory}
             >
               Delete
             </Button>
