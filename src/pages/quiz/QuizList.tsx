@@ -135,9 +135,12 @@ function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
   const { profile } = useAuthStore()
   const { guestId } = useGuestStore()
   // Owner check: match profile id OR guest id with creator_id
-  const isOwner = !config.authRequired // in guest mode let users manage quizzes
-    || (profile?.id && profile.id === quiz.creator_id)
-    || (guestId && guestId === quiz.creator_id)
+  // Consider guest-created quizzes (creator_id null) as deletable by current user
+  const isOwner =
+    !config.authRequired ||
+    quiz.creator_id === null ||
+    (profile?.id && profile.id === quiz.creator_id) ||
+    (guestId && guestId === quiz.creator_id)
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this quiz? This cannot be undone.')) {
