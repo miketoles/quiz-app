@@ -10,6 +10,8 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import type { Quiz } from '../../lib/database.types'
 
+const devForceDelete = import.meta.env.VITE_DEV_FORCE_DELETE === 'true'
+
 export function QuizList() {
   const { profile } = useAuthStore()
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
@@ -161,7 +163,7 @@ function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
       return
     }
 
-    if (hasHistory) {
+    if (hasHistory && !devForceDelete) {
       alert('This quiz has already been played and cannot be deleted. Duplicate it to run again.')
       return
     }
@@ -273,7 +275,7 @@ function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
   }
 
   return (
-    <Card className="flex flex-col">
+    <Card className={`flex flex-col ${hasHistory ? 'bg-white/5 opacity-80' : ''}`}>
       <div className="flex-1">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-lg font-bold text-white line-clamp-2">{quiz.title}</h3>
@@ -326,6 +328,16 @@ function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
                 isLoading={duplicating}
               >
                 Duplicate
+              </Button>
+            )}
+            {devForceDelete && hasHistory && (
+              <Button
+                variant="ghost"
+                onClick={handleDelete}
+                isLoading={deleting}
+                className="text-error hover:bg-error/20"
+              >
+                Force Delete (dev)
               </Button>
             )}
             <Button
