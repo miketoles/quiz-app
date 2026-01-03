@@ -758,6 +758,10 @@ function calculateScore(
 5. Question editor (add/edit/delete/reorder)
 6. Multiple choice + True/False question types
 7. Quiz preview mode
+8. Quiz lifecycle rules:
+   - Quizzes with game history are marked as "Played" and cannot be deleted; duplicate to rerun on a new date
+   - Fresh (unplayed) quizzes can be edited/deleted
+   - Dev-only force delete is gated by `VITE_DEV_FORCE_DELETE=true` (never enable in production)
 
 **Deliverable:** BCBAs can create complete quizzes
 
