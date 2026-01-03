@@ -158,12 +158,12 @@ function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
     void checkHistory()
   }, [quiz.id])
 
-  const handleDelete = async () => {
-    if (!confirm('Delete this quiz? This cannot be undone.')) {
+  const handleDelete = async (force = false) => {
+    if (!confirm(force ? 'Force delete this quiz and ALL game data?' : 'Delete this quiz? This cannot be undone.')) {
       return
     }
 
-    if (hasHistory && !devForceDelete) {
+    if (hasHistory && !devForceDelete && !force) {
       alert('This quiz has already been played and cannot be deleted. Duplicate it to run again.')
       return
     }
@@ -185,6 +185,18 @@ function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
         await supabase.from('game_participants').delete().in('game_session_id', sessionIds)
         // Delete sessions
         await supabase.from('game_sessions').delete().in('id', sessionIds)
+      }
+
+      // Clean up questions/options (foreign key prevents deleting quiz otherwise)
+      const { data: questionRows } = await supabase
+        .from('questions')
+        .select('id')
+        .eq('quiz_id', quiz.id)
+
+      const qIds = (questionRows || []).map((q) => q.id)
+      if (qIds.length) {
+        await supabase.from('question_options').delete().in('question_id', qIds)
+        await supabase.from('questions').delete().in('id', qIds)
       }
 
       const { error } = await supabase.from('quizzes').delete().eq('id', quiz.id)
@@ -330,25 +342,27 @@ function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
                 Duplicate
               </Button>
             )}
-            {devForceDelete && hasHistory && (
+            {hasHistory ? (
+              devForceDelete && (
+                <Button
+                  variant="ghost"
+                  onClick={() => handleDelete(true)}
+                  isLoading={deleting}
+                  className="text-error hover:bg-error/20"
+                >
+                  Force Delete (dev)
+                </Button>
+              )
+            ) : (
               <Button
                 variant="ghost"
-                onClick={handleDelete}
+                onClick={() => handleDelete(false)}
                 isLoading={deleting}
                 className="text-error hover:bg-error/20"
               >
-                Force Delete (dev)
+                Delete
               </Button>
             )}
-            <Button
-              variant="ghost"
-              onClick={handleDelete}
-              isLoading={deleting}
-              className={`text-error hover:bg-error/20 ${hasHistory ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={hasHistory}
-            >
-              Delete
-            </Button>
           </>
         )}
 
