@@ -103,19 +103,79 @@ BCBAs can mark questions as "warmup" or "fun trivia" questions that don't count 
 ### Design
 - **Style:** Cute cartoon animals/creatures (fox, owl, bear, cat, dog, rabbit, etc.)
 - **Selection:** Per-game only (quick pick when joining - no account required)
-- **Base characters:** 8-10 animal options
-- **Accessories:** 5-10 items (hats, glasses, bow ties, headbands)
+- **Base characters:** 10 animal options (fox, owl, bear, cat, dog, rabbit, panda, lion, penguin, koala)
+- **Accessories:** 7 items (glasses, sunglasses, top hat, cap, crown, bow, headphones)
+- **Layered rendering:** Accessories appear ON the avatar (Kahoot-style) rather than floating beside it
 
 ### Implementation
 ```
 Player joins game:
 1. Enter nickname
-2. Pick base avatar (grid of 8-10 animals)
+2. Pick base avatar (grid of 10 animals)
 3. Optionally add 1 accessory (horizontal scroll of items)
 4. Join game
 
 Avatar stored as: { base: "fox", accessory: "glasses" | null }
 ```
+
+### Avatar Rendering (Layered System)
+The Avatar component supports two rendering modes:
+1. **Emoji fallback (current):** Uses emoji characters with CSS positioning
+2. **Image mode:** Uses PNG images with accessories layered on top
+
+The system automatically falls back to emojis if image files are not found.
+
+Each avatar has per-accessory position configs in `src/lib/constants.ts`:
+```typescript
+accessoryPositions: {
+  glasses: { top: '38%', left: '50%', transform: 'translateX(-50%)' },
+  tophat: { top: '-8%', left: '50%', transform: 'translateX(-50%)' },
+  // ... etc
+}
+```
+
+### Upgrading to Image Avatars (Optional)
+
+To replace emojis with custom artwork:
+
+**1. Create the folder structure:**
+```
+public/
+├── avatars/
+│   ├── fox.png
+│   ├── owl.png
+│   ├── bear.png
+│   ├── cat.png
+│   ├── dog.png
+│   ├── rabbit.png
+│   ├── panda.png
+│   ├── lion.png
+│   ├── penguin.png
+│   └── koala.png
+└── accessories/
+    ├── glasses.png
+    ├── sunglasses.png
+    ├── tophat.png
+    ├── cap.png
+    ├── crown.png
+    ├── bow.png
+    └── headphones.png
+```
+
+**2. Image specifications:**
+- **Format:** PNG with transparent background
+- **Size:** Square aspect ratio (256x256 or 512x512 recommended)
+- **Avatar style:** Consistent art style across all animals, face centered
+- **Accessory style:** Just the item (glasses without a face, hat without a head)
+
+**3. Fine-tune positions (if needed):**
+Edit `src/lib/constants.ts` to adjust accessory positions per avatar. Different face shapes may need different offsets.
+
+**4. Image sources:**
+- AI generators (Midjourney, DALL-E)
+- Asset packs (game asset marketplaces)
+- Commission an artist (Fiverr, ~$50-100 for a set)
+- DiceBear or similar avatar generators
 
 ### Avatar Display
 - **Player lobby:** Avatar + nickname shown in player list
@@ -948,7 +1008,7 @@ If you need to continue this project in a new Claude session:
 **Core:**
 - `src/lib/supabase.ts` - Supabase client
 - `src/lib/database.types.ts` - TypeScript types for all tables
-- `src/lib/constants.ts` - Avatars, accessories, colors, defaults
+- `src/lib/constants.ts` - Avatars (with image paths & accessory positions), accessories, colors, defaults
 - `src/stores/authStore.ts` - Auth state & profile management
 - `src/stores/gameStore.ts` - Live game state & realtime subscriptions
 - `src/utils/scoring.ts` - Score calculation with warmup support
@@ -964,7 +1024,9 @@ If you need to continue this project in a new Claude session:
 - `src/components/ui/Button.tsx`, `Input.tsx`, `Card.tsx`, `Select.tsx`, `Toggle.tsx`, `Textarea.tsx`
 - `src/components/layout/Layout.tsx`
 - `src/components/quiz/QuestionEditor.tsx`
-- `src/components/game/Timer.tsx`, `GameQRCode.tsx`, `Avatar.tsx`, `AvatarPicker.tsx`, `AnswerButton.tsx`
+- `src/components/game/Timer.tsx`, `GameQRCode.tsx`, `AnswerButton.tsx`
+- `src/components/game/Avatar.tsx` - Layered avatar display (images with emoji fallback)
+- `src/components/game/AvatarPicker.tsx` - Avatar + accessory selection UI
 
 **Database:**
 - `supabase/migrations/001_initial_schema.sql` - All tables

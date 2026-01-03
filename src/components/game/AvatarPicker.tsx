@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AVATARS, ACCESSORIES } from '../../lib/constants'
+import { Avatar } from './Avatar'
 
 interface AvatarPickerProps {
   selectedBase: string
@@ -22,19 +23,11 @@ export function AvatarPicker({ selectedBase, selectedAccessory, onSelect }: Avat
     onSelect(base, newAccessory)
   }
 
-  const selectedAvatar = AVATARS.find((a) => a.id === base)
-  const selectedAcc = ACCESSORIES.find((a) => a.id === (accessory || 'none'))
-
   return (
     <div className="space-y-6">
-      {/* Preview */}
+      {/* Preview - uses Avatar component with layered images */}
       <div className="flex justify-center">
-        <div className="relative w-24 h-24 bg-white/10 rounded-full flex items-center justify-center">
-          <span className="text-5xl">{selectedAvatar?.emoji}</span>
-          {selectedAcc && selectedAcc.id !== 'none' && (
-            <span className="absolute -top-2 -right-2 text-2xl">{selectedAcc.emoji}</span>
-          )}
-        </div>
+        <Avatar base={base} accessory={accessory} size="xl" />
       </div>
 
       {/* Avatar Selection */}
