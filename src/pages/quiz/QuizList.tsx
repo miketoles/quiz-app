@@ -171,36 +171,43 @@ function QuizCard({ quiz, canHost, onRefresh }: QuizCardProps) {
     setDeleting(true)
     try {
       // Clean up related game data first (game_sessions → participants/responses)
-      const { data: sessions } = await supabase
+      const { data: sessions, error: sessionFetchError } = await supabase
         .from('game_sessions')
         .select('id')
         .eq('quiz_id', quiz.id)
 
+      if (sessionFetchError) throw sessionFetchError
       const sessionIds = (sessions || []).map((s) => s.id)
 
       if (sessionIds.length) {
         // Delete responses
-        await supabase.from('question_responses').delete().in('game_session_id', sessionIds)
+        const { error: respError } = await supabase.from('question_responses').delete().in('game_session_id', sessionIds)
+        if (respError) throw respError
         // Delete participants
-        await supabase.from('game_participants').delete().in('game_session_id', sessionIds)
+        const { error: partError } = await supabase.from('game_participants').delete().in('game_session_id', sessionIds)
+        if (partError) throw partError
         // Delete sessions
-        await supabase.from('game_sessions').delete().in('id', sessionIds)
+        const { error: sessDeleteError } = await supabase.from('game_sessions').delete().in('id', sessionIds)
+        if (sessDeleteError) throw sessDeleteError
       }
 
       // Clean up questions/options (foreign key prevents deleting quiz otherwise)
-      const { data: questionRows } = await supabase
+      const { data: questionRows, error: questionFetchError } = await supabase
         .from('questions')
         .select('id')
         .eq('quiz_id', quiz.id)
 
+      if (questionFetchError) throw questionFetchError
       const qIds = (questionRows || []).map((q) => q.id)
       if (qIds.length) {
-        await supabase.from('question_options').delete().in('question_id', qIds)
-        await supabase.from('questions').delete().in('id', qIds)
+        const { error: optError } = await supabase.from('question_options').delete().in('question_id', qIds)
+        if (optError) throw optError
+        const { error: qError } = await supabase.from('questions').delete().in('id', qIds)
+        if (qError) throw qError
       }
 
-      const { error } = await supabase.from('quizzes').delete().eq('id', quiz.id)
-      if (error) throw error
+      const { error: quizError } = await supabase.from('quizzes').delete().eq('id', quiz.id)
+      if (quizError) throw quizError
       onRefresh()
     } catch (err) {
       console.error('Error deleting quiz:', err)
